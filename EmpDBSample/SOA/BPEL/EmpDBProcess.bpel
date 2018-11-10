@@ -1,0 +1,88 @@
+<?xml version = "1.0" encoding = "UTF-8" ?>
+<!--
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  Oracle JDeveloper BPEL Designer 
+  
+  Created: Wed Nov 07 22:22:53 AST 2018
+  Author:  mkommanagunta
+  Type: BPEL 2.0 Process
+  Purpose: Synchronous BPEL Process
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-->
+<process name="EmpDBProcess"
+               targetNamespace="http://xmlns.oracle.com/SOAAppls/EmpDBSample/EmpDBProcess"
+               xmlns="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+               xmlns:client="http://xmlns.oracle.com/SOAAppls/EmpDBSample/EmpDBProcess"
+               xmlns:ora="http://schemas.oracle.com/xpath/extension"
+               xmlns:ui="http://xmlns.oracle.com/soa/designer"
+               xmlns:bpelx="http://schemas.oracle.com/bpel/extension"
+         xmlns:bpel="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+         xmlns:ns1="http://xmlns.oracle.com/pcbpel/adapter/db/SOAAppls/EmpDBSample/EmpDBRef"
+         xmlns:ns2="http://xmlns.oracle.com/pcbpel/adapter/db/top/EmpDBRef">
+
+    <import ui:processWSDL="true" namespace="http://xmlns.oracle.com/SOAAppls/EmpDBSample/EmpDBProcess" location="../WSDLs/EmpDBProcess.wsdl" importType="http://schemas.xmlsoap.org/wsdl/"/>
+    <!-- 
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        PARTNERLINKS                                                      
+        List of services participating in this BPEL process               
+      ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    --> 
+  <partnerLinks>
+    <!-- 
+      The 'client' role represents the requester of this service. It is 
+      used for callback. The location and correlation information associated
+      with the client role are automatically set using WS-Addressing.
+    -->
+    <partnerLink name="empdbprocess_client" partnerLinkType="client:EmpDBProcess" myRole="EmpDBProcessProvider"/>
+    <partnerLink name="EmpDBRef" partnerLinkType="ns1:EmpDBRef_plt" partnerRole="EmpDBRef_role"/>
+  </partnerLinks>
+
+  <!-- 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+      VARIABLES                                                        
+      List of messages and XML documents used within this BPEL process 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  -->
+  <variables>
+    <!-- Reference to the message passed as input during initiation -->
+    <variable name="inputVariable" messageType="client:EmpDBProcessRequestMessage"/>
+
+    <!-- Reference to the message that will be returned to the requester-->
+    <variable name="outputVariable" messageType="client:EmpDBProcessResponseMessage"/>
+    <variable name="InvokeDB_IV" messageType="ns1:EmpDBRefSelect_inputParameters"/>
+    <variable name="InvokeDB_OV" messageType="ns1:EmployeesCollection_msg"/>
+  </variables>
+
+  <!-- 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+     ORCHESTRATION LOGIC                                               
+     Set of activities coordinating the flow of messages across the    
+     services integrated within this business process                  
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  -->
+  <sequence name="main">
+
+    <!-- Receive input from requestor. (Note: This maps to operation defined in EmpDBProcess.wsdl) -->
+    <receive name="receiveInput" partnerLink="empdbprocess_client" portType="client:EmpDBProcess" operation="process" variable="inputVariable" createInstance="yes"/>
+    <assign name="AssignInput">
+      <copy>
+        <from>$inputVariable.payload/ns2:deptId</from>
+        <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$InvokeDB_IV.EmpDBRefSelect_inputParameters/ns2:deptId</to>
+      </copy>
+    </assign>
+    <invoke name="InvokeDB" partnerLink="EmpDBRef" portType="ns1:EmpDBRef_ptt"
+            operation="EmpDBRefSelect" inputVariable="InvokeDB_IV" outputVariable="InvokeDB_OV"
+            bpelx:invokeAsDetail="no"/>
+    <assign name="XQTransform1">
+      <bpelx:annotation>
+        <bpelx:pattern patternName="bpelx:xquery"></bpelx:pattern>
+      </bpelx:annotation>
+      <copy>
+        <from>ora:processXQuery10('../Transformations/XQTransform1_1.xqy', 'InvokeDB_OV.EmployeesCollection', $InvokeDB_OV.EmployeesCollection)</from>
+        <to variable="outputVariable" part="payload"/>
+      </copy>
+    </assign>
+    <!-- Generate reply to synchronous request -->
+    <reply name="replyOutput" partnerLink="empdbprocess_client" portType="client:EmpDBProcess" operation="process" variable="outputVariable"/>
+  </sequence>
+</process>

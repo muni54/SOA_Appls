@@ -1,0 +1,14 @@
+<adapter-config name="EmpDBRef" adapter="db" wsdlLocation="../WSDLs/EmpDBRef.wsdl" xmlns="http://platform.integration.oracle/blocks/adapter/fw/metadata">
+  
+  <connection-factory UIConnectionName="HrDS" location="eis/DB/HrDS"/>
+  <endpoint-interaction portType="EmpDBRef_ptt" operation="EmpDBRefSelect">
+    <interaction-spec className="oracle.tip.adapter.db.DBReadInteractionSpec">
+      <property name="DescriptorName" value="EmpDBRef.Employees"/>
+      <property name="QueryName" value="EmpDBRefSelect"/>
+      <property name="MappingsMetaDataURL" value="EmpDBRef-or-mappings.xml"/>
+      <property name="ReturnSingleResultSet" value="false"/>
+      <property name="GetActiveUnitOfWork" value="false"/>
+    </interaction-spec>
+  </endpoint-interaction>
+
+</adapter-config>
